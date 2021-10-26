@@ -18,7 +18,6 @@ class TCPSegment:
             s = s + w
 
         s = (s>>16) + (s & 0xffff);
-        #s = s + (s >> 16);
         #complement and mask to 4 byte short
         s = ~s & 0xffff
 

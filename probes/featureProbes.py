@@ -1,11 +1,7 @@
 import sys, requests, json, os, ssl, socket, asyncio
 from urllib3.exceptions import InsecureRequestWarning
-#from sslyze.server_connectivity_tester import ServerConnectivityTester
-#from sslyze.plugins.openssl_cipher_suites_plugin import *
-from statistics import mean
 from urllib.parse import urlparse
 from tldextract import extract
-import xml.etree.ElementTree as ET
 
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'tls_prober'))
 from tls_prober import prober, probe_db
@@ -83,12 +79,6 @@ class TLSVersions(FeatureProbe):
 class TLSLibrary(FeatureProbe):
 
     def test(self):
-        # loop = asyncio.get_event_loop()
-        # try:
-        #     results = loop.run_until_complete(prober.probe(self.fullDomain, self.https_port, 'auto', None))
-        #     loop.run_until_complete(loop.shutdown_asyncgens())
-        # finally:
-        #     loop.close()
         results = prober.probe(self.fullDomain, self.https_port, 'auto', None)
         matches = probe_db.find_matches(results)
         results = {key:value for (key,value) in matches}

@@ -1,4 +1,4 @@
-# Phoca
+# PHOCA
 Tool to analyze and classify websites as originating from a MITM phishing toolkit or not.
 
 ## Requirements
@@ -21,3 +21,33 @@ Bulk scan multiple websites by supplying a csv containing one URL or domain per 
 Output results to a CSV file rather than terminal output:
 
 `sudo ./phoca -r domains.csv -w results.csv`
+
+JSON and CSV formats supported for output of raw feature data:
+
+```
+sudo ./phoca --raw-data --output-format json www.google.com | jq
+{
+  "www.google.com": {
+    "classification": "Non-Phishing",
+    "data": {
+      "site": "www.google.com",
+      "tcpSYNTiming": 5.626678466796875e-05,
+      "tlsClientHelloTiming": 0.0029659271240234375,
+      "tlsClientHelloErrorTiming": 0.003025054931640625,
+      "tlsHandshakeTiming": 0.012071371078491211,
+      ...
+```
+
+## Docker
+Alternatively, you can use the supplied Docker image to run PHOCA from a Docker container, simplifying the setup process.
+To do this, first build the image:
+
+`sudo docker build -t phoca .`
+
+Then, run the container, supplying the domain of interest:
+
+`sudo docker run --rm phoca www.attacker.com`
+
+If you would like to allow PHOCA to read domains from an input file, you must mount that file to the root of the container:
+
+`sudo docker run -v /home/user/input.txt:/input.txt phoca -r input.txt`

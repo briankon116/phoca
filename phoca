@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import argparse, sys, os, time, concurrent.futures, random, csv, io
+import argparse, sys, os, time, concurrent.futures, csv, io
 import pickle
 from sklearn.ensemble import RandomForestClassifier
 from tqdm import tqdm
@@ -30,61 +30,44 @@ class Detector:
         TLSVersions,
     ]
 
-    def __init__(self, http_port=80, https_port=443, numIterations=10,
-            chunkSize=-1, modelFile="./classifierDrop.cls"):
+    def __init__(self, http_port=80, https_port=443, numIterations=10, 
+                modelFile="./classifier.cls", rawData=False,
+                outputFile=None, outputFormat="csv"):
 
         self.http_port = http_port
         self.https_port = https_port
         self.numIterations = numIterations
-        self.chunkSize = chunkSize
         self.modelFile = modelFile
+        self.outputFile = outputFile
+        self.outputFormat = outputFormat
+        self.rawData = rawData
+        self.model = pickle.load(open(self.modelFile, 'rb'))
 
-        # Create a tmp file for caching output so memory usage doesn't balloon
-        self.tmpFile = '.PhocaCache'
-        if(self.chunkSize != -1):
-            f = open(self.tmpFile, 'w')
-            f.close()
-
-    def clean_up(self):
-        if(os.path.isfile(self.tmpFile)):
-            os.remove(self.tmpFile)
-
-    def crawl(self, domains, outputFile=None, classify=False, rawData=False):
+    def crawl(self, domains):
         crawlResults = {}
 
-        if(classify):
-            self.model = pickle.load(open(self.modelFile, 'rb'))
-
-        # If there are more than 1 URL, we want to display a progress bar on the screen
         with concurrent.futures.ThreadPoolExecutor(10) as executor:
-            for result in self.tqdm_parallel_map(executor, self.testSite, [(domain, classify) for domain in domains]):
-                crawlResults[result['site']] = {'classification' : result['classification'], 'data' : result['data']}
+            for result in self.tqdm_parallel_map(executor, self.testSite, domains):
+                crawlResults[result['site']] = {'classification' : result['classification'], 
+                                                'data' : result['data']}
+                if(self.outputFile == None and not self.rawData):
+                    if(len(domains) == 1):
+                        print(result['classification'])
+                    else:
+                        print(f"{result['site']}: {result['classification']}")
 
-                if(self.chunkSize != -1 and len(crawlResults) > self.chunkSize):
-                    self.writeResultsToFile(self.readChunkedResults(crawlResults), self.tmpFile, file_format='json', classify=classify, rawData=rawData)
-                    crawlResults = []
+        output = self.writeResultsToFile(crawlResults)
+        if(output and self.rawData):
+            print(output)
 
-        results = self.readChunkedResults(crawlResults)
-        output = self.writeResultsToFile(results, outputFile, classify=classify, rawData=rawData)
-        if(outputFile == None):
-            pass
-
-        self.clean_up()
-
-        return results
-
-    def testSite(self, site, classify):
+    def testSite(self, site):
         result = {'site' : site}
         result['data'] = self.probeSite(site)
-        result['classification'] = None
-
-        if(classify):
-            result['classification'] = self.classifySite(result['data'])
+        result['classification'] = self.classifySite(result['data'])
 
         return result
 
     def classifySite(self, recordings):
-        # result = {'site' : recordings['site'], 'classification' : None}
         classification = None
 
         recordingsDataFrame = DataFrame([recordings])
@@ -97,7 +80,6 @@ class Detector:
 
         try:
             classification = self.model.predict(recordingsDataFrame)[0]
-            print(classification)
         except Exception as e:
             print(e)
 
@@ -135,32 +117,22 @@ class Detector:
                 probeResults.update({})
 
         executor.shutdown(wait=False)
-
         return probeResults
 
-    def readChunkedResults(self, results):
-        existingFileDataFrame = {}
-        if(os.path.exists(self.tmpFile) and os.path.getsize(self.tmpFile) > 0):
-            with open(self.tmpFile, 'r') as f:
-                existingFileDataFrame = json.load(f)
-        results.update(existingFileDataFrame)
-        return results
-
-    def writeResultsToFile(self, siteResults, outputFile=None, file_format='csv', classify=False, rawData=False):
-        if(outputFile != None):
-            f = open(outputFile, 'w')
+    def writeResultsToFile(self, siteResults):
+        if(self.outputFile != None):
+            f = open(self.outputFile, 'w')
         else:
             f = io.StringIO()
 
-        if(file_format == 'csv'):
+        if(self.outputFormat == 'csv'):
             resultsToFile = []
 
             for key,value in siteResults.items():
                 currentResults = {}
-                if(rawData):
+                if(self.rawData):
                     currentResults.update(value['data'])
-                if(classify):
-                    currentResults['classification'] = value['classification']
+                currentResults['classification'] = value['classification']
                 currentResults['site'] = key
 
                 resultsToFile.append(currentResults)
@@ -169,17 +141,14 @@ class Detector:
             writer.writeheader()
             for row in resultsToFile:
                 writer.writerow(row)
-        elif(file_format == 'json'):
+        elif(self.outputFormat == 'json'):
             for key in siteResults.keys():
-                if(not classify):
-                    del siteResults[key]['classification']
-                elif(not rawData):
+                if(not self.rawData):
                     del siteResults[key]['data']
 
-            with open(outputFile, 'w') as f:
-                json.dump(siteResults, f)
+            json.dump(siteResults, f)
 
-        if(outputFile == None):
+        if(self.outputFile == None):
             output = f.getvalue()
         else:
             output = None
@@ -187,19 +156,11 @@ class Detector:
         return output
 
     def tqdm_parallel_map(self, executor, fn, *iterables, **kwargs):
-        """
-        Equivalent to executor.map(fn, *iterables),
-        but displays a tqdm-based progress bar.
-
-        Does not support timeout or chunksize as executor.submit is used internally
-
-        **kwargs is passed to tqdm.
-        """
         futures_list = []
         results = []
         for iterable in iterables:
-            futures_list += [executor.submit(fn, i[0], i[1]) for i in iterable]
-        if(len(futures_list) > 1):
+            futures_list += [executor.submit(fn, i) for i in iterable]
+        if(len(futures_list) > 1 and self.outputFile):
             for f in tqdm(concurrent.futures.as_completed(futures_list), total=len(futures_list), **kwargs):
                 yield f.result()
         else:
@@ -223,13 +184,14 @@ def process_args():
     parser.add_argument("domain",
                         nargs="?",
                         help="Domain to classify as a MITM phishing website. Not required if input file specified with -r argument.")
-    parser.add_argument("-R", "--record",
+    parser.add_argument("-R", "--raw-data",
                         action="store_true",
                         default=False,
-                        help="Set operating mode to record data about site(s). Output argument required if this mode is set.")
+                        help="Record and output raw classification data about site(s).")
     parser.add_argument("-w", "--output-file",
                         type=str,
-                        help="File to write probe outputs to. This argument is required if in record mode.")
+                        help="File to write probe outputs to. This argument is required if in record mode.",
+                        default=None)
     parser.add_argument("-r", "--input-file",
                         type=str,
                         help="File containing URLs or IP addresses to crawl. Each line should contain only the URL.")
@@ -241,9 +203,7 @@ def process_args():
                         help="Set the port to scan HTTP web servers. Defaults to 80.")
     parser.add_argument("--https-port", type=int, default=443,
                         help="Set the port to scan HTTPS web servers. Defaults to 443.")
-    parser.add_argument("-c", "--chunk-size", type=int, default=-1,
-                        help="Enable and set the size of chunking to use. By default all output will be stored in memory " + \
-                                "unless a chunk size is specified here. A value of -1 means no chunking will be used. Must be >= -1.")
+    parser.add_argument("--output-format", help="Format to produce output if in \"Record\" mode. Options include: csv, json. Default format is csv.", default="csv")
     args = vars(parser.parse_args())
 
     if(args["domain"] == None and args["input_file"] == None):
@@ -252,9 +212,6 @@ def process_args():
     elif(os.geteuid() != 0):
         print("Root permissions not granted. Removing TCP SYN/ACK timing from probe list. Rerun program as root to enable this probe.")
         self.timingProbes.remove(tcpSYNTiming)
-    elif(args["chunk_size"] < -1):
-        parser.print_help(sys.stderr)
-        sys.exit(1)
     return args
 
 if(__name__ == '__main__'):
@@ -263,11 +220,14 @@ if(__name__ == '__main__'):
     if(args['input_file'] != None):
         with open(args['input_file'], "r") as f:
             domains = [domain.strip() for domain in f.readlines()]
-            random.shuffle(domains)
     else:
         domains = [args["domain"]]
 
-    detector = Detector(http_port=args['http_port'], https_port=args['https_port'], numIterations=args['num_iterations'],
-            chunkSize=args['chunk_size'])
+    detector = Detector(http_port=args['http_port'], 
+                        https_port=args['https_port'], 
+                        numIterations=args['num_iterations'],
+                        rawData=args['raw_data'],
+                        outputFile=args['output_file'],
+                        outputFormat=args['output_format'])
 
-    detector.crawl(domains, outputFile=args['output_file'], classify=not args['record'], rawData=args['record'])
+    detector.crawl(domains)

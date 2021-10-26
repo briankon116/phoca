@@ -1,4 +1,4 @@
-# Taken from https://gist.github.com/fffaraz/57144833c6ef8bd9d453
+# Snippets taken from https://gist.github.com/fffaraz/57144833c6ef8bd9d453
 import socket, sys, time, random, ssl, string
 from struct import *
 from networking.tcp.TCPSegment import TCPSYNSegment
@@ -166,7 +166,6 @@ class tlsClientHelloErrorTiming(TimingProbe):
 
     def test(self, n=1):
         self.dest_port = self.https_port
-        #clientHelloMessage = bytearray(random.getrandbits(8) for _ in range(32))
         clientHelloMessage = b'\xcfU"\xf1\';\x8c\xd8\xb0W)7+\xbc\xedN\x07\xc9*\xc9d\xdb\x19@M\x81-\x980P%\x8a'
         return super().test(clientHelloMessage, timeout=2, n=n)
 
@@ -177,9 +176,9 @@ class tlsHandshakeTiming(TimingProbe):
         self.dest_port = self.https_port
         return super().test(None, sslSocket=True, n=n)
 
+# https://stackoverflow.com/questions/54393599/measuring-performance-time-for-tls-handshake
 class httpsGetRequestTiming(TimingProbe):
 
-    # https://stackoverflow.com/questions/54393599/measuring-performance-time-for-tls-handshake
     def test(self, n=1):
         self.dest_port = self.https_port
         getRequest = str.encode('GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (self.getRandomString(), self.fullDomain))
@@ -192,9 +191,9 @@ class httpGetRequestTiming(TimingProbe):
         getRequest = str.encode('GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (self.getRandomString(), self.fullDomain))
         return super().test(getRequest, n=n)
 
+# https://stackoverflow.com/questions/54393599/measuring-performance-time-for-tls-handshake
 class httpsGetRequestErrorTiming(TimingProbe):
 
-    # https://stackoverflow.com/questions/54393599/measuring-performance-time-for-tls-handshake
     def test(self, n=1):
         self.dest_port = self.https_port
         getRequest = str.encode('ERROR /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (self.getRandomString(), self.fullDomain))
@@ -207,9 +206,9 @@ class httpGetRequestErrorTiming(TimingProbe):
         getRequest = str.encode('ERROR /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (self.getRandomString(), self.fullDomain))
         return super().test(getRequest, n=n)
 
+# https://stackoverflow.com/questions/54393599/measuring-performance-time-for-tls-handshake
 class httpsGetRequestNoHostHeaderTiming(TimingProbe):
 
-    # https://stackoverflow.com/questions/54393599/measuring-performance-time-for-tls-handshake
     def test(self, n=1):
         self.dest_port = self.https_port
         getRequest = str.encode('GET /%s HTTP/1.1\r\n\r\n' % (self.getRandomString()))
@@ -221,13 +220,3 @@ class httpGetRequestNoHostHeaderTiming(TimingProbe):
         self.dest_port = self.http_port
         getRequest = str.encode('GET /%s HTTP/1.1\r\n\r\n' % (self.getRandomString()))
         return super().test(getRequest, n=n)
-
-if(__name__ == '__main__'):
-    # print(tlsClientHelloErrorTiming('https://www.connecticutbanking.net', http_port=80, https_port=443).test())
-    print(httpsGetRequestTiming('1.1.longislandbanking.com', http_port=80, https_port=443).test(n=1))
-    # print(tlsClientHelloTiming('bancoestado.cl').test())
-    # print(tlsClientHelloErrorTiming('bancoestado.cl').test())
-    # print(tlsHandshakeTiming('bancoestado.cl').test())
-    # print(('bancoestado.cl').test())
-    # print(tcpSYNTiming('bancoestado.cl').test())
-    # print(tcpSYNTiming('bancoestado.cl').test())

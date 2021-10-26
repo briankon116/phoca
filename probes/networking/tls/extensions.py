@@ -8,7 +8,6 @@ class TLSExtension(object):
     TrustedCAKeys = 3
     TruncateHMAC = 4
     StatusRequest = 5
-    # EllipticCurves = 10
     SupportedGroups = 10
     ECPointFormats = 11
     SignatureAlgorithms = 13
@@ -40,7 +39,6 @@ class TLSExtension(object):
     def __len__(self):
         return len(self.bytes)
 
-# TODO: Make dynamic like the others
 class KeyShareExtension(TLSExtension):
 
     def __init__(self):
