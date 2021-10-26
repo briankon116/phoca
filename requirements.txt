@@ -1,0 +1,6 @@
+tqdm
+tldextract
+dnspython
+sslyze==2.1.4
+pandas
+scikit-learn==0.22.1
