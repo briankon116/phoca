@@ -28,18 +28,6 @@ class TimingProbe:
         except:
             self.dest_ip = None
 
-        # Temporary for groudtruth experiment
-        if(self.port != None):
-            if(self.port == 8443):
-                self.https_port = 8443
-                self.http_port = 8080
-            elif(self.port == 8444):
-                self.https_port = 8444
-                self.http_port = 8081
-            elif(self.port == 8445):
-                self.https_port = 8445
-                self.http_port = 8082
-
     @staticmethod
     def parseURL(url):
         parts = urlparse(url)

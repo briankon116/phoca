@@ -1,4 +1,4 @@
-import sys, requests, dns.resolver, json, os, ssl, socket, asyncio
+import sys, requests, json, os, ssl, socket, asyncio
 from urllib3.exceptions import InsecureRequestWarning
 #from sslyze.server_connectivity_tester import ServerConnectivityTester
 #from sslyze.plugins.openssl_cipher_suites_plugin import *

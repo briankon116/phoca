@@ -1,6 +1,5 @@
 tqdm
 tldextract
-dnspython
 sslyze==2.1.4
 pandas
-scikit-learn==0.22.1
+scikit-learn==1.0
